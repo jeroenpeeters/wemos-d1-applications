@@ -24,7 +24,7 @@ int S_OPENING = 3;
 int S_CLOSING = 4;
 
 
-int STATE = S_STOPPED;
+int STATE = S_OPEN;
 
 void buildInLedOn(){
   digitalWrite(D4, LOW);
@@ -75,11 +75,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
   memcpy(message,payload,length);
   message[length] = 0;
 
-  if(OPEN.compare(message) == 0){
+  if(OPEN.compare(message) == 0 && STATE != S_OPEN){
     open();
-  } else if(CLOSE.compare(message) == 0){
+  } else if(CLOSE.compare(message) == 0 && STATE != S_CLOSED){
     close();
-  } else {
+  } else if(STATE != S_OPEN && STATE != S_CLOSED){
     stop();
   }
   free(message);
@@ -87,7 +87,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 PubSubClient mqtt(mqttIp, mqttPort, callback, wfClient);
 
-int pos = 0;
+int pos = 120;
 char buffer[100 + 1];
 
 void repeatMe(){
@@ -95,8 +95,9 @@ void repeatMe(){
     pos++;
     sprintf(buffer,"%d",pos);
     mqtt.publish(pos_topic, buffer);
-    if(pos >= 11){
+    if(pos >= 120){
       stop();
+      STATE = S_OPEN;
     }
   }else if(STATE == S_CLOSING){
     pos--;
@@ -104,6 +105,7 @@ void repeatMe(){
     mqtt.publish(pos_topic, buffer);
     if(pos <= 0){
       stop();
+      STATE = S_CLOSED;
     }
   }
 }
@@ -149,7 +151,7 @@ void setup() {
       mqtt.subscribe(topic);
     }
 
-    timer.setInterval(1000, repeatMe);
+    timer.setInterval(100, repeatMe);
 }
 
 void loop() {
